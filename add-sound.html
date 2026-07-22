@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Earth Sound Map — Manage Sounds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-0:#140d33; --bg-1:#1d1450; --bg-2:#291a68;
+  --glass:rgba(255,255,255,.06); --border:rgba(255,255,255,.18);
+  --accent:#8b6bff; --accent-2:#c9b6ff;
+  --text:#f6f4ff; --text-dim:#b7b0e0; --text-faint:#8078ab;
+  --cat-nature:#34e5a8; --cat-urban:#4da6ff; --cat-mechanical:#ffb648; --cat-culture:#ff5fa8; --cat-music:#a78bfa;
+}
+*{box-sizing:border-box;}
+body{
+  margin:0; min-height:100vh; font-family:'Inter',sans-serif; color:var(--text);
+  background:linear-gradient(160deg, var(--bg-2), var(--bg-1) 50%, var(--bg-0));
+  padding:36px 20px 90px;
+}
+.wrap{max-width:920px; margin:0 auto;}
+h1{font-family:'Space Grotesk',sans-serif; font-size:28px; margin-bottom:6px;}
+.sub{color:var(--text-dim); font-size:13.5px; line-height:1.7; margin-bottom:26px;}
+.sub b{color:var(--text);}
+.card{background:var(--glass); border:1px solid var(--border); border-radius:18px; padding:22px 24px; margin-bottom:20px; backdrop-filter:blur(14px);}
+.card h2{font-size:14.5px; font-weight:700; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; gap:10px;}
+.card p.hint{font-size:12px; color:var(--text-faint); margin:4px 0 14px; line-height:1.6;}
+.toolbar{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px;}
+.btn{display:inline-flex; align-items:center; gap:8px; background:linear-gradient(120deg,var(--accent-2),var(--accent)); color:#0c0a24; font-weight:700; padding:10px 18px; border-radius:999px; border:none; font-size:12.8px; cursor:pointer; box-shadow:0 8px 20px rgba(139,107,255,.28);}
+.btn.small{padding:7px 14px; font-size:11.8px;}
+.btn.secondary{background:rgba(255,255,255,.08); color:var(--text); box-shadow:none; border:1px solid var(--border);}
+.btn.danger{background:rgba(255,95,94,.15); color:#ff8f85; box-shadow:none; border:1px solid rgba(255,95,94,.35);}
+.btn:disabled{opacity:.4; cursor:not-allowed;}
+
+.sound-row{display:flex; align-items:center; gap:14px; padding:12px; border-radius:14px; border:1px solid var(--border); background:rgba(255,255,255,.03); margin-bottom:10px;}
+.sound-row img{width:64px; height:48px; object-fit:cover; border-radius:8px; flex:none; background:rgba(255,255,255,.05);}
+.sound-row .meta{flex:1; min-width:0;}
+.sound-row .meta .t{font-size:13.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.sound-row .meta .l{font-size:11.5px; color:var(--text-faint); margin-top:2px;}
+.badge{display:inline-block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; padding:3px 9px; border-radius:999px; margin-right:6px;}
+.row-actions{display:flex; gap:8px; flex:none;}
+.empty{font-size:13px; color:var(--text-faint); padding:20px; text-align:center;}
+
+/* Form */
+#form-panel{display:none;}
+label{display:block; font-size:12px; color:var(--text-dim); margin:14px 0 6px; font-weight:600;}
+label .opt{color:var(--text-faint); font-weight:400;}
+input[type=text], input[type=number], input[type=url], textarea, select{
+  width:100%; background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:10px;
+  padding:10px 12px; color:var(--text); font-size:13.5px; font-family:inherit;
+}
+textarea{resize:vertical; min-height:64px;}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+.file-drop{border:1.5px dashed var(--border); border-radius:12px; padding:14px; text-align:center; font-size:12px; color:var(--text-faint); cursor:pointer; transition:border-color .2s ease;}
+.file-drop:hover{border-color:var(--accent);}
+.file-drop input{display:none;}
+.file-name{font-size:11px; color:var(--accent-2); margin-top:5px; word-break:break-all;}
+.map-help{font-size:11.5px; color:var(--text-faint); margin-top:6px; line-height:1.6;}
+.map-help a{color:var(--accent-2);}
+.status{margin-top:14px; font-size:12.5px; padding:10px 14px; border-radius:10px; display:none;}
+.status.ok{display:block; background:rgba(52,229,168,.12); color:#34e5a8; border:1px solid rgba(52,229,168,.3);}
+.status.err{display:block; background:rgba(255,95,94,.12); color:#ff6f5e; border:1px solid rgba(255,95,94,.3);}
+.status.info{display:block; background:rgba(139,107,255,.12); color:var(--accent-2); border:1px solid rgba(139,107,255,.3);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Manage Sounds</h1>
+  <p class="sub">This manages <b>every</b> sound on Earth Sound Map — add new ones, edit or delete any existing one. Changes save instantly, and if <code>index.html</code> is hosted on the same site, it picks them up the next time it loads.</p>
+
+  <div class="card" id="auth-gate" style="display:none;">
+    <h2>Sign in</h2>
+    <p class="hint">Writing to the database is locked to your account only. Sign in with the email/password you created in Firebase Authentication.</p>
+    <label>Email</label>
+    <input type="text" id="auth-email" placeholder="you@example.com">
+    <label>Password</label>
+    <input type="text" id="auth-password" placeholder="••••••••" style="-webkit-text-security:disc; text-security:disc;">
+    <div class="toolbar" style="margin-top:14px;">
+      <button class="btn" id="btn-signin">Sign in</button>
+    </div>
+    <div class="status" id="auth-status"></div>
+  </div>
+
+  <div id="app-content" style="display:none;">
+  <div class="toolbar" style="justify-content:flex-end; margin-bottom:4px;">
+    <span id="auth-whoami" style="font-size:11.5px; color:var(--text-faint);"></span>
+    <button class="btn secondary small" id="btn-signout" style="display:none;">Sign out</button>
+  </div>
+
+  <div class="card">
+    <h2>All sounds <span id="count-badge" style="font-weight:400; color:var(--text-faint); font-size:12px;"></span></h2>
+    <div class="toolbar">
+      <button class="btn" id="btn-add-new">＋ Add New Sound</button>
+      <button class="btn secondary small" id="btn-reset-local">Clear all local changes</button>
+    </div>
+    <div id="sound-list"></div>
+  </div>
+
+  <div class="card" id="form-panel">
+    <h2 id="form-title">Add a Sound</h2>
+    <p class="hint">Fill in the details below.</p>
+
+    <label>Title</label>
+    <input type="text" id="f-title" placeholder="e.g. Monsoon Rain on a Tin Roof">
+    <div class="row2">
+      <div><label>Latitude</label><input type="text" id="f-lat" placeholder="e.g. 13.7563"></div>
+      <div><label>Longitude</label><input type="text" id="f-lng" placeholder="e.g. 100.5018"></div>
+    </div>
+    <p class="map-help">Tip: right-click a spot on <a href="https://www.openstreetmap.org" target="_blank" rel="noopener">openstreetmap.org</a> or Google Maps and choose "What's here?" / "Copy coordinates".</p>
+    <label>Country / region</label>
+    <input type="text" id="f-country" placeholder="e.g. Thailand">
+    <label>Category</label>
+    <select id="f-category">
+      <option value="nature">Nature</option>
+      <option value="urban">Urban</option>
+      <option value="mechanical">Mechanical</option>
+      <option value="culture">Culture</option>
+      <option value="music">Music</option>
+    </select>
+    <label>Description</label>
+    <textarea id="f-desc" placeholder="A short description of the sound and where it was captured."></textarea>
+    <label>Contributor</label>
+    <input type="text" id="f-contributor" placeholder="Your name or credit">
+
+    <p class="hint" id="media-size-hint" style="margin-top:14px;"></p>
+    <label>Cover image <span class="opt">(shown on cards &amp; the map panel)</span></label>
+    <input type="url" id="f-cover-url" placeholder="https://example.com/photo.jpg">
+    <div class="file-drop" id="drop-cover">Click to upload an image instead<input type="file" id="file-cover" accept="image/*"><div class="file-name" id="name-cover"></div></div>
+
+    <label>Video <span class="opt">(optional — plays instead of the cover image, in sync with the audio)</span></label>
+    <input type="url" id="f-video-url" placeholder="https://example.com/clip.mp4">
+    <div class="file-drop" id="drop-video">Click to upload a video instead<input type="file" id="file-video" accept="video/*"><div class="file-name" id="name-video"></div></div>
+
+    <label>Audio recording <span class="opt">(optional — leave blank to use the built-in placeholder sound)</span></label>
+    <input type="url" id="f-audio-url" placeholder="https://example.com/sound.mp3">
+    <div class="file-drop" id="drop-audio">Click to upload audio instead<input type="file" id="file-audio" accept="audio/*"><div class="file-name" id="name-audio"></div></div>
+
+    <label>Spectrogram image <span class="opt">(optional — shown in the detail panel)</span></label>
+    <input type="url" id="f-spectro-url" placeholder="https://example.com/spectrogram.png">
+    <div class="file-drop" id="drop-spectro">Click to upload an image instead<input type="file" id="file-spectro" accept="image/*"><div class="file-name" id="name-spectro"></div></div>
+
+    <div class="toolbar" style="margin-top:18px;">
+      <button class="btn" id="btn-save">Save</button>
+      <button class="btn secondary" id="btn-cancel">Cancel</button>
+    </div>
+    <div class="status" id="form-status"></div>
+  </div>
+
+  <div class="card">
+    <h2>Export Updated Site</h2>
+    <p class="hint">Upload your current <code>index.html</code> — this bakes every addition, edit and deletion above directly into a fresh copy for you to download and upload to your host, so all visitors see the changes (not just this browser).</p>
+    <div class="file-drop" id="drop-site">Click to upload your current index.html<input type="file" id="file-site" accept=".html,text/html"><div class="file-name" id="name-site"></div></div>
+    <div class="toolbar" style="margin-top:14px;">
+      <button class="btn" id="btn-export">Export Updated Site</button>
+    </div>
+    <div class="status" id="export-status"></div>
+  </div>
+  </div>
+</div>
+
+<script>
+const CATEGORY_LABEL = {nature:'Nature', urban:'Urban', mechanical:'Mechanical', culture:'Culture', music:'Music'};
+const CATEGORY_COLOR = {nature:'#34e5a8', urban:'#4da6ff', mechanical:'#ffb648', culture:'#ff5fa8', music:'#a78bfa'};
+
+/* Keep in sync with the SOUND_DATA defaults in index.html. */
+const BASE_SOUND_DATA = [
+  { id:'iceland-glacier', title:'Glacier Ice Cracking', lat:64.0466, lng:-16.7196, country:'Iceland', category:'nature', description:'Recorded at the edge of Vatnajokull glacier, the slow groan of shifting ice and the drip of meltwater.', contributor:'E. Sigurdsson', cover:'https://picsum.photos/seed/iceland-glacier/600/450', video:null, spectrogram:null, audioUrl:null, plays:1820, dateAdded:'2026-06-02' },
+  { id:'kyoto-temple', title:'Old Temple Bell and Garden', lat:35.0116, lng:135.7681, country:'Japan', category:'culture', description:'A dawn temple bell in Kyoto, mixed with bamboo wind and distant chanting.', contributor:'Hana Ito', cover:'https://picsum.photos/seed/kyoto-temple/600/450', video:null, spectrogram:null, audioUrl:null, plays:3120, dateAdded:'2026-05-18' },
+  { id:'varanasi-ghat', title:'Ganges Morning Prayer', lat:25.3176, lng:83.0130, country:'India', category:'culture', description:'Riverside morning bells, oars in water, and voices echoing across the ghats of Varanasi.', contributor:'Raj Malhotra', cover:'https://picsum.photos/seed/varanasi-ghat/600/450', video:null, spectrogram:null, audioUrl:null, plays:980, dateAdded:'2026-04-27' },
+  { id:'maasai-dawn', title:'Maasai Mara Dawn Chorus', lat:-1.5021, lng:35.1436, country:'Kenya', category:'nature', description:'A savanna sunrise bird chorus, with a distant lion call and wind through the grass.', contributor:'Amara Otieno', cover:'https://picsum.photos/seed/maasai-dawn/600/450', video:null, spectrogram:null, audioUrl:null, plays:2410, dateAdded:'2026-06-11' },
+  { id:'shanghai-metro', title:'Rush Hour Subway', lat:31.2304, lng:121.4737, country:'China', category:'urban', description:'Shanghai metro at peak hour, station announcements, footsteps, and a train pulling in.', contributor:'Wei Chen', cover:'https://picsum.photos/seed/shanghai-metro/600/450', video:null, spectrogram:null, audioUrl:null, plays:4390, dateAdded:'2026-06-15' },
+  { id:'rio-favela', title:'Favela Samba Night', lat:-22.9068, lng:-43.1729, country:'Brazil', category:'music', description:'An improvised night of samba drums and call-and-response singing in a hillside community.', contributor:'Beatriz Souza', cover:'https://picsum.photos/seed/rio-favela/600/450', video:null, spectrogram:null, audioUrl:null, plays:3670, dateAdded:'2026-05-30' },
+  { id:'bergen-fjord', title:'Fjord Wind and Gulls', lat:60.3913, lng:5.3221, country:'Norway', category:'nature', description:'Wind through mooring lines and calling gulls on the docks of a Bergen fjord.', contributor:'Lars Haugen', cover:'https://picsum.photos/seed/bergen-fjord/600/450', video:null, spectrogram:null, audioUrl:null, plays:1240, dateAdded:'2026-03-09' },
+  { id:'venice-canal', title:'Venice Canal Bells', lat:45.4408, lng:12.3155, country:'Italy', category:'culture', description:'A gondolier oar in the water, a distant song, and church bells over the canals.', contributor:'Giulia Romano', cover:'https://picsum.photos/seed/venice-canal/600/450', video:null, spectrogram:null, audioUrl:null, plays:2870, dateAdded:'2026-04-02' },
+  { id:'detroit-factory', title:'Old Detroit Factory Floor', lat:42.3314, lng:-83.0458, country:'USA', category:'mechanical', description:'The rhythmic clank of a stamping press and conveyor belt inside a disused auto plant.', contributor:'Marcus Reed', cover:'https://picsum.photos/seed/detroit-factory/600/450', video:null, spectrogram:null, audioUrl:null, plays:1560, dateAdded:'2026-02-21' },
+  { id:'sydney-harbour', title:'Sydney Opera House Harbour', lat:-33.8568, lng:151.2153, country:'Australia', category:'urban', description:'Ferry horns, lapping waves, and visitor chatter gathering on the Opera House steps.', contributor:'Olivia Park', cover:'https://picsum.photos/seed/sydney-harbour/600/450', video:null, spectrogram:null, audioUrl:null, plays:2050, dateAdded:'2026-06-05' }
+];
+
+/* =========================================================================================
+   OPTIONAL: live shared backend (Firebase Firestore) — fill this in so sounds you add or
+   edit here appear automatically on the live site for EVERY visitor, with no export/upload
+   step. Paste the SAME config as in index.html's FIREBASE_CONFIG.
+   1. https://console.firebase.google.com → create a free project → add a "Web app" → copy
+      the config object it gives you here (and into index.html).
+   2. Build > Firestore Database > Create database (test mode is fine to start).
+   Leave the placeholder values below to keep using local-only mode (browser storage +
+   the Export button) instead.
+========================================================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyApNaGIO0zGwN71AswO3fu1J1y2XqKI7Vs",
+  authDomain: "earth-sound-map-f3d14.firebaseapp.com",
+  projectId: "earth-sound-map-f3d14",
+  storageBucket: "earth-sound-map-f3d14.firebasestorage.app",
+  messagingSenderId: "453807997512",
+  appId: "1:453807997512:web:cab440c9bd9b27993e0e7d"
+};
+const FIREBASE_ENABLED = FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY';
+(function setMediaHint(){
+  const hint = document.getElementById('media-size-hint');
+  if(!hint) return;
+  hint.textContent = FIREBASE_ENABLED
+    ? 'Paste a URL for each file below when you can — Firestore documents are capped at ~1MB total, so directly-uploaded files must stay under about 700KB (a hosted URL has no size limit at all).'
+    : 'Provide a URL for each file, or upload one directly below.';
+})();
+let fbApp = null, fbDb = null, fbMod = null, fbAuthMod = null, fbAuth = null;
+async function ensureFirebase(){
+  if(fbDb) return fbDb;
+  const appMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+  fbMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+  fbApp = appMod.initializeApp(FIREBASE_CONFIG);
+  fbDb = fbMod.getFirestore(fbApp);
+  return fbDb;
+}
+async function ensureAuth(){
+  if(fbAuth) return fbAuth;
+  await ensureFirebase();
+  fbAuthMod = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+  fbAuth = fbAuthMod.getAuth(fbApp);
+  return fbAuth;
+}
+async function fetchAllSounds(){
+  if(FIREBASE_ENABLED){
+    try{
+      const db = await ensureFirebase();
+      const snap = await fbMod.getDocs(fbMod.collection(db,'sounds'));
+      const list = [];
+      snap.forEach(function(d){ const data=d.data(); data.id=d.id; data.isCustom=true; list.push(data); });
+      return list;
+    }catch(e){
+      console.warn('Firestore read failed', e);
+      showBanner('err','Could not reach Firestore (check FIREBASE_CONFIG and your Firestore rules). Falling back to local-only mode for now.');
+      return effectiveList();
+    }
+  }
+  return effectiveList();
+}
+async function upsertSound(id, fields){
+  const db = await ensureFirebase();
+  await fbMod.setDoc(fbMod.doc(db,'sounds', id), fields, {merge:true});
+}
+async function removeSound(id){
+  const db = await ensureFirebase();
+  await fbMod.deleteDoc(fbMod.doc(db,'sounds', id));
+}
+async function importDefaultsToFirestore(){
+  const db = await ensureFirebase();
+  for(const item of BASE_SOUND_DATA){
+    const copy = Object.assign({}, item); delete copy.id;
+    await fbMod.setDoc(fbMod.doc(db,'sounds', item.id), copy, {merge:true});
+  }
+  renderList();
+}
+function showBanner(kind, msg){
+  let el = document.getElementById('global-banner');
+  if(!el){
+    el = document.createElement('div'); el.id='global-banner';
+    el.style.cssText = 'max-width:920px;margin:0 auto 20px;padding:12px 16px;border-radius:12px;font-size:12.5px;line-height:1.6;';
+    document.querySelector('.wrap').insertBefore(el, document.querySelector('.wrap').children[2]);
+  }
+  const styles = {
+    ok:'background:rgba(52,229,168,.14);border:1px solid rgba(52,229,168,.4);color:#34e5a8;',
+    err:'background:rgba(255,95,94,.14);border:1px solid rgba(255,95,94,.4);color:#ff8f85;',
+    info:'background:rgba(139,107,255,.14);border:1px solid rgba(139,107,255,.4);color:#c9b6ff;'
+  };
+  el.style.cssText += styles[kind]||styles.info;
+  el.textContent = msg;
+}
+
+function loadOverrides(){
+  let custom=[], deleted=[], edits={};
+  try{ custom = JSON.parse(localStorage.getItem('esm_custom_sounds')||'[]'); }catch(e){}
+  try{ deleted = JSON.parse(localStorage.getItem('esm_deleted_ids')||'[]'); }catch(e){}
+  try{ edits = JSON.parse(localStorage.getItem('esm_edited_sounds')||'{}'); }catch(e){}
+  return {custom, deleted, edits};
+}
+function saveOverrides(o){
+  localStorage.setItem('esm_custom_sounds', JSON.stringify(o.custom));
+  localStorage.setItem('esm_deleted_ids', JSON.stringify(o.deleted));
+  localStorage.setItem('esm_edited_sounds', JSON.stringify(o.edits));
+}
+function effectiveList(){
+  const o = loadOverrides();
+  let list = BASE_SOUND_DATA.filter(function(item){ return o.deleted.indexOf(item.id)===-1; })
+    .map(function(item){ const merged = o.edits[item.id] ? Object.assign({}, item, o.edits[item.id]) : Object.assign({}, item); merged.isCustom=false; return merged; });
+  o.custom.forEach(function(c){
+    if(o.deleted.indexOf(c.id)!==-1) return;
+    const merged = o.edits[c.id] ? Object.assign({}, c, o.edits[c.id]) : Object.assign({}, c);
+    merged.isCustom = true;
+    list.push(merged);
+  });
+  return list;
+}
+
+function slugify(s){ return (s||'').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'') || ('sound-'+Date.now()); }
+function esc(s){ return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' '); }
+
+/* ---------- List rendering ---------- */
+async function renderList(){
+  const wrap = document.getElementById('sound-list');
+  wrap.innerHTML = '<div class="empty">Loading…</div>';
+  const list = await fetchAllSounds();
+  document.getElementById('count-badge').textContent = '('+list.length+')';
+  if(!list.length){
+    wrap.innerHTML = '<div class="empty">No sounds yet — add one above.'+
+      (FIREBASE_ENABLED ? '<br><button class="btn small secondary" id="btn-import-defaults" style="margin-top:10px;">Import the 10 starter sounds</button>' : '')+
+      '</div>';
+    if(FIREBASE_ENABLED){ document.getElementById('btn-import-defaults').addEventListener('click', importDefaultsToFirestore); }
+    return;
+  }
+  wrap.innerHTML = '';
+  list.forEach(function(item){
+    const row = document.createElement('div');
+    row.className = 'sound-row';
+    const color = CATEGORY_COLOR[item.category] || '#8b6bff';
+    row.innerHTML =
+      '<img src="'+(item.cover||'')+'" alt="">' +
+      '<div class="meta"><div class="t">'+(item.title||'(untitled)')+'</div>' +
+      '<div class="l"><span class="badge" style="background:'+color+'33;color:'+color+'">'+(CATEGORY_LABEL[item.category]||item.category)+'</span>'+(item.country||'')+'</div></div>' +
+      '<div class="row-actions"><button class="btn small secondary" data-act="edit">Edit</button><button class="btn small danger" data-act="delete">Delete</button></div>';
+    row.querySelector('[data-act=edit]').addEventListener('click', function(){ openForm(item); });
+    row.querySelector('[data-act=delete]').addEventListener('click', function(){ deleteSound(item); });
+    wrap.appendChild(row);
+  });
+}
+
+async function deleteSound(item){
+  if(!confirm('Delete "'+item.title+'"? This can\'t be undone here (though you can still re-add it).')) return;
+  if(FIREBASE_ENABLED){
+    try{ await removeSound(item.id); }
+    catch(e){ showBanner('err','Could not delete from Firestore: '+e.message); return; }
+  } else {
+    const o = loadOverrides();
+    if(item.isCustom){
+      o.custom = o.custom.filter(function(c){ return c.id !== item.id; });
+    } else {
+      if(o.deleted.indexOf(item.id)===-1) o.deleted.push(item.id);
+    }
+    delete o.edits[item.id];
+    saveOverrides(o);
+  }
+  renderList();
+}
+
+/* ---------- Auth gate (only relevant when Firebase is configured) ---------- */
+document.getElementById('btn-signin').addEventListener('click', async function(){
+  const email = document.getElementById('auth-email').value.trim();
+  const pass = document.getElementById('auth-password').value;
+  if(!email || !pass){ showStatus('auth-status','err','Enter your email and password.'); return; }
+  try{
+    await ensureAuth();
+    await fbAuthMod.signInWithEmailAndPassword(fbAuth, email, pass);
+  }catch(e){
+    showStatus('auth-status','err','Could not sign in: '+e.message);
+  }
+});
+document.getElementById('btn-signout').addEventListener('click', async function(){
+  if(fbAuth) await fbAuthMod.signOut(fbAuth);
+});
+
+async function boot(){
+  if(!FIREBASE_ENABLED){
+    document.getElementById('auth-gate').style.display = 'none';
+    document.getElementById('app-content').style.display = 'block';
+    showBanner('info', 'Local-only mode: changes are saved in this browser only. Fill in FIREBASE_CONFIG (see the code comments) to enable a shared live database with sign-in protected writes.');
+    renderList();
+    return;
+  }
+  await ensureAuth();
+  fbAuthMod.onAuthStateChanged(fbAuth, function(user){
+    if(user){
+      document.getElementById('auth-gate').style.display = 'none';
+      document.getElementById('app-content').style.display = 'block';
+      document.getElementById('btn-signout').style.display = 'inline-flex';
+      document.getElementById('auth-whoami').textContent = 'Signed in as ' + user.email;
+      showBanner('ok', 'Connected to Firestore, signed in — sounds you add, edit, or delete here go live on the site for every visitor immediately.');
+      renderList();
+    } else {
+      document.getElementById('auth-gate').style.display = 'block';
+      document.getElementById('app-content').style.display = 'none';
+    }
+  });
+}
+boot();
+
+document.getElementById('btn-reset-local').addEventListener('click', function(){
+  if(FIREBASE_ENABLED){
+    alert('You\'re connected to Firestore, so there\'s no local-only data to clear here — delete sounds individually above instead.');
+    return;
+  }
+  if(!confirm('Clear every local addition, edit and deletion? This resets the manager back to the original defaults in this browser.')) return;
+  localStorage.removeItem('esm_custom_sounds'); localStorage.removeItem('esm_deleted_ids'); localStorage.removeItem('esm_edited_sounds');
+  renderList();
+});
+
+/* ---------- Form (shared for add + edit) ---------- */
+let editingItem = null;
+let embedded = { cover:null, video:null, audio:null, spectro:null };
+
+function wireFileDrop(dropId, inputId, nameId, cb){
+  const drop = document.getElementById(dropId), input = document.getElementById(inputId), nameEl = document.getElementById(nameId);
+  drop.addEventListener('click', function(){ input.click(); });
+  input.addEventListener('change', function(){
+    if(!input.files.length) return;
+    const file = input.files[0];
+    if(FIREBASE_ENABLED && file.size > 700*1024){
+      nameEl.style.color = '#ff8f85';
+      nameEl.textContent = 'Too large ('+Math.round(file.size/1024)+' KB) — Firestore documents are capped at ~1MB total, so files this size can\'t be embedded directly. Host it elsewhere (e.g. imgbb.com for images, Cloudinary for audio/video) and paste the resulting URL in the field above instead.';
+      input.value = '';
+      return;
+    }
+    nameEl.style.color = '';
+    nameEl.textContent = file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+    const reader = new FileReader();
+    reader.onload = function(){ cb(reader.result); };
+    reader.readAsDataURL(file);
+  });
+}
+wireFileDrop('drop-cover','file-cover','name-cover', function(dataUrl){ embedded.cover = dataUrl; });
+wireFileDrop('drop-video','file-video','name-video', function(dataUrl){ embedded.video = dataUrl; });
+wireFileDrop('drop-audio','file-audio','name-audio', function(dataUrl){ embedded.audio = dataUrl; });
+wireFileDrop('drop-spectro','file-spectro','name-spectro', function(dataUrl){ embedded.spectro = dataUrl; });
+
+
+function clearForm(){
+  ['f-title','f-lat','f-lng','f-country','f-desc','f-contributor','f-cover-url','f-video-url','f-audio-url','f-spectro-url'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('f-category').value = 'nature';
+  ['name-cover','name-video','name-audio','name-spectro'].forEach(function(id){ document.getElementById(id).textContent=''; });
+  embedded = { cover:null, video:null, audio:null, spectro:null };
+  document.getElementById('form-status').className = 'status';
+}
+function openForm(item){
+  editingItem = item || null;
+  clearForm();
+  document.getElementById('form-title').textContent = item ? 'Edit Sound' : 'Add a Sound';
+  if(item){
+    document.getElementById('f-title').value = item.title||'';
+    document.getElementById('f-lat').value = item.lat!=null? item.lat:'';
+    document.getElementById('f-lng').value = item.lng!=null? item.lng:'';
+    document.getElementById('f-country').value = item.country||'';
+    document.getElementById('f-category').value = item.category||'nature';
+    document.getElementById('f-desc').value = item.description||'';
+    document.getElementById('f-contributor').value = item.contributor||'';
+    document.getElementById('f-cover-url').value = (item.cover&&item.cover.indexOf('data:')!==0) ? item.cover : '';
+    document.getElementById('f-video-url').value = (item.video&&item.video.indexOf('data:')!==0) ? item.video : '';
+    document.getElementById('f-audio-url').value = (item.audioUrl&&item.audioUrl.indexOf('data:')!==0) ? item.audioUrl : '';
+    document.getElementById('f-spectro-url').value = (item.spectrogram&&item.spectrogram.indexOf('data:')!==0) ? item.spectrogram : '';
+    if(item.cover && item.cover.indexOf('data:')===0) embedded.cover = item.cover;
+    if(item.video && item.video.indexOf('data:')===0) embedded.video = item.video;
+    if(item.audioUrl && item.audioUrl.indexOf('data:')===0) embedded.audio = item.audioUrl;
+    if(item.spectrogram && item.spectrogram.indexOf('data:')===0) embedded.spectro = item.spectrogram;
+  }
+  document.getElementById('form-panel').style.display = 'block';
+  document.getElementById('form-panel').scrollIntoView({behavior:'smooth', block:'start'});
+}
+document.getElementById('btn-add-new').addEventListener('click', function(){ openForm(null); });
+document.getElementById('btn-cancel').addEventListener('click', function(){ document.getElementById('form-panel').style.display='none'; editingItem=null; });
+
+function showStatus(elId, kind, msg){ const el=document.getElementById(elId); el.className='status '+kind; el.textContent=msg; }
+
+document.getElementById('btn-save').addEventListener('click', async function(){
+  const title = document.getElementById('f-title').value.trim();
+  const lat = document.getElementById('f-lat').value.trim();
+  const lng = document.getElementById('f-lng').value.trim();
+  const country = document.getElementById('f-country').value.trim();
+  const category = document.getElementById('f-category').value;
+  const desc = document.getElementById('f-desc').value.trim();
+  const contributor = document.getElementById('f-contributor').value.trim();
+  const coverUrl = document.getElementById('f-cover-url').value.trim() || embedded.cover;
+  const videoUrl = document.getElementById('f-video-url').value.trim() || embedded.video;
+  const audioUrl = document.getElementById('f-audio-url').value.trim() || embedded.audio;
+  const spectroUrl = document.getElementById('f-spectro-url').value.trim() || embedded.spectro;
+
+  if(!title || !lat || !lng || !country){
+    showStatus('form-status','err','Please fill in at least the title, latitude, longitude, and country.'); return;
+  }
+  const fields = {
+    title:title, lat:parseFloat(lat), lng:parseFloat(lng), country:country, category:category,
+    description:desc, contributor:contributor, cover:coverUrl||'', video:videoUrl||null,
+    spectrogram:spectroUrl||null, audioUrl:audioUrl||null
+  };
+
+  if(FIREBASE_ENABLED){
+    const id = editingItem ? editingItem.id : (slugify(title) + '-' + Math.random().toString(36).slice(2,6));
+    const payload = Object.assign({}, fields, {
+      plays: editingItem ? (editingItem.plays||0) : 0,
+      dateAdded: editingItem ? (editingItem.dateAdded||new Date().toISOString().slice(0,10)) : new Date().toISOString().slice(0,10)
+    });
+    try{
+      await upsertSound(id, payload);
+      showStatus('form-status','ok', (editingItem?'Saved — updated "':'Added "')+title+'" — live on the site for everyone now.');
+    }catch(e){ showStatus('form-status','err','Could not save to Firestore: '+e.message); return; }
+  } else {
+    const o = loadOverrides();
+    if(editingItem){
+      if(editingItem.isCustom){
+        const idx = o.custom.findIndex(function(c){ return c.id===editingItem.id; });
+        if(idx>-1) o.custom[idx] = Object.assign({}, o.custom[idx], fields);
+      } else {
+        o.edits[editingItem.id] = Object.assign({}, o.edits[editingItem.id]||{}, fields);
+      }
+      showStatus('form-status','ok','Saved — updated "'+title+'".');
+    } else {
+      const id = slugify(title) + '-' + Math.random().toString(36).slice(2,6);
+      o.custom.push(Object.assign({ id:id, plays:0, dateAdded:new Date().toISOString().slice(0,10) }, fields));
+      showStatus('form-status','ok','Added "'+title+'".');
+    }
+    saveOverrides(o);
+  }
+  renderList();
+  setTimeout(function(){ document.getElementById('form-panel').style.display='none'; editingItem=null; }, 700);
+});
+
+/* ---------- Export: bake everything into a fresh index.html ---------- */
+let siteHtml = null, siteFileName = 'index.html';
+document.getElementById('drop-site').addEventListener('click', function(){ document.getElementById('file-site').click(); });
+document.getElementById('file-site').addEventListener('change', function(){
+  const input = document.getElementById('file-site');
+  if(!input.files.length) return;
+  const file = input.files[0]; siteFileName = file.name;
+  document.getElementById('name-site').textContent = file.name + ' (' + Math.round(file.size/1024) + ' KB)';
+  const reader = new FileReader();
+  reader.onload = function(){ siteHtml = reader.result; };
+  reader.readAsText(file);
+});
+
+function entryText(item){
+  return "  { id:'"+esc(item.id)+"', title:'"+esc(item.title)+"', lat:"+item.lat+", lng:"+item.lng+", country:'"+esc(item.country)+"',\n"+
+    "    category:'"+item.category+"', description:'"+esc(item.description)+"',\n"+
+    "    contributor:'"+esc(item.contributor)+"', cover:'"+esc(item.cover||'')+"', video:"+(item.video? "'"+esc(item.video)+"'":"null")+
+    ", spectrogram:"+(item.spectrogram? "'"+esc(item.spectrogram)+"'":"null")+", audioUrl:"+(item.audioUrl? "'"+esc(item.audioUrl)+"'":"null")+
+    ", plays:"+(item.plays||0)+", dateAdded:'"+(item.dateAdded||new Date().toISOString().slice(0,10))+"' },";
+}
+
+document.getElementById('btn-export').addEventListener('click', async function(){
+  if(!siteHtml){ showStatus('export-status','err','Please upload your current index.html first.'); return; }
+  const list = await fetchAllSounds();
+  if(!list.length){ showStatus('export-status','err','There are no sounds to export.'); return; }
+
+  const entries = list.map(entryText).join('\n');
+  const newBlock = "const DEFAULT_SOUND_DATA = [\n" + entries + "\n];";
+
+  const re = /const DEFAULT_SOUND_DATA = \[[\s\S]*?\n\];/;
+  if(!re.test(siteHtml)){
+    showStatus('export-status','err','Could not find the DEFAULT_SOUND_DATA array in that file — make sure you uploaded the matching index.html.');
+    return;
+  }
+  const updated = siteHtml.replace(re, newBlock);
+  const blob = new Blob([updated], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = siteFileName || 'index.html';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+  showStatus('export-status','ok','Done — downloaded "'+(siteFileName||'index.html')+'" with all '+list.length+' sounds baked in. Upload it to your host to publish.');
+});
+
+/* Warn clearly if localStorage isn't usable here (common when opening the file
+   directly via file:// in some browsers) — the live-preview into index.html
+   depends on it, but Export Updated Site always works regardless. */
+(function checkStorage(){
+  if(FIREBASE_ENABLED) return;
+  let ok = true;
+  try{
+    const k = '__esm_test__';
+    localStorage.setItem(k,'1'); localStorage.removeItem(k);
+  }catch(e){ ok = false; }
+  if(!ok || location.protocol === 'file:'){
+    const banner = document.createElement('div');
+    banner.style.cssText = 'max-width:920px;margin:0 auto 20px;background:rgba(255,182,72,.14);border:1px solid rgba(255,182,72,.4);color:#ffb648;padding:12px 16px;border-radius:12px;font-size:12.5px;line-height:1.6;';
+    banner.textContent = ok
+      ? 'Heads up: this page is open via a local file (file://). Some browsers isolate storage per file in this mode, so changes made here may not appear in index.html even after a refresh. If that happens, use "Export Updated Site" below instead — it always works.'
+      : 'Heads up: this browser is blocking local storage here, so changes will not carry over to index.html automatically. Use "Export Updated Site" below instead — it always works.';
+    document.querySelector('.wrap').insertBefore(banner, document.querySelector('.wrap').children[2]);
+  }
+})();
+</script>
+</body>
+</html>
