@@ -110,7 +110,7 @@ nav.tabs .pill{position:absolute; top:4px; bottom:4px; border-radius:999px; back
 .sound-marker .core{position:absolute; inset:6px; border-radius:50%; box-shadow:0 0 12px 2px currentColor; background:currentColor;}
 .sound-marker .ring{position:absolute; inset:0; border-radius:50%; border:1.5px solid currentColor; opacity:.7; animation:pulseRing 2.4s cubic-bezier(.3,.6,.4,1) infinite;}
 @keyframes pulseRing{0%{transform:scale(.5); opacity:.9;}100%{transform:scale(2.1); opacity:0;}}
-.leaflet-container{background:#120c30 !important;}
+.leaflet-container{background:#eef1f4 !important;}
 .marker-cluster-custom{background:rgba(139,107,255,.22); border:1px solid rgba(139,107,255,.6); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:700; box-shadow:0 0 16px rgba(139,107,255,.4);}
 
 /* ---------- Detail Panel ---------- */
@@ -342,7 +342,7 @@ nav.tabs .pill{position:absolute; top:4px; bottom:4px; border-radius:999px; back
    title         sound title
    lat, lng      coordinates (right-click a point on Google Maps / OpenStreetMap to copy)
    country       country / region label
-   category      one of: nature | urban | mechanical | culture | music
+   category      one of: nature | urban | mechanical | culture | music | human
    description   short text description
    contributor   credit / attribution
    cover         cover image URL (4:3 works best)
@@ -442,8 +442,8 @@ async function resolveSoundData(){
   return applyLocalOverrides(DEFAULT_SOUND_DATA);
 }
 
-const CATEGORY_LABEL = {nature:'Nature', urban:'Urban', mechanical:'Mechanical', culture:'Culture', music:'Music'};
-const CATEGORY_COLOR = {nature:'#34e5a8', urban:'#4da6ff', mechanical:'#ffb648', culture:'#ff5fa8', music:'#a78bfa'};
+const CATEGORY_LABEL = {nature:'Nature', urban:'Urban', mechanical:'Mechanical', culture:'Culture', music:'Music', human:'Human Activity Sounds'};
+const CATEGORY_COLOR = {nature:'#34e5a8', urban:'#4da6ff', mechanical:'#ffb648', culture:'#ff5fa8', music:'#a78bfa', human:'#f97316'};
 
 function setNowColor(category){ document.documentElement.style.setProperty('--now', CATEGORY_COLOR[category] || '#8b6bff'); }
 
@@ -485,6 +485,7 @@ function synthBuffer(category){
     case 'mechanical':   noiseFilter.type='bandpass'; noiseFilter.frequency.value=480;  noiseFilter.Q.value=2.2; noiseGain.gain.value=0.24; baseFreqs=[55,82.4,110]; break;
     case 'culture':      noiseFilter.type='highpass'; noiseFilter.frequency.value=2200; noiseGain.gain.value=0.1; baseFreqs=[220,293.6,440]; break;
     case 'music':        noiseFilter.type='lowpass';  noiseFilter.frequency.value=3000; noiseGain.gain.value=0.06; baseFreqs=[196,246.9,293.6,392]; break;
+    case 'human':         noiseFilter.type='bandpass'; noiseFilter.frequency.value=1000; noiseFilter.Q.value=1.1; noiseGain.gain.value=0.2; baseFreqs=[130.8,164.8,196]; break;
     default:             noiseFilter.type='lowpass';  noiseFilter.frequency.value=900; noiseGain.gain.value=0.18;
   }
   noise.connect(noiseFilter); noiseFilter.connect(noiseGain); noiseGain.connect(master);
@@ -716,8 +717,8 @@ function makeMarkerIcon(item){
 function initLeafletMap(){
   leafletMap = L.map('map-2d', {zoomControl:false, worldCopyJump:false, minZoom:2, maxBounds:WORLD_BOUNDS, maxBoundsViscosity:1.0}).setView([20,10], 2.3);
   L.control.zoom({position:'bottomright'}).addTo(leafletMap);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution:'&copy; OpenStreetMap contributors &copy; CARTO', subdomains:'abcd', maxZoom:19, noWrap:true
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution:'&copy; OpenStreetMap contributors &copy; CARTO', subdomains:'abcd', maxZoom:20, noWrap:true
   }).addTo(leafletMap);
 
   markerLayer = L.markerClusterGroup({
@@ -1089,8 +1090,8 @@ function setSrcView(m){
 function initSrcMap(){
   srcMap = L.map('src-map', {zoomControl:false, worldCopyJump:false, minZoom:2, maxBounds:WORLD_BOUNDS, maxBoundsViscosity:1.0}).setView([20,10], 2.1);
   L.control.zoom({position:'bottomright'}).addTo(srcMap);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution:'&copy; OpenStreetMap contributors &copy; CARTO', subdomains:'abcd', maxZoom:19, noWrap:true
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution:'&copy; OpenStreetMap contributors &copy; CARTO', subdomains:'abcd', maxZoom:20, noWrap:true
   }).addTo(srcMap);
 }
 function renderSrcMapMarkers(){
