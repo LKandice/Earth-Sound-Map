@@ -162,6 +162,8 @@ nav.tabs .pill{position:absolute; top:4px; bottom:4px; border-radius:999px; back
 .pb-btn{width:36px; height:36px; border-radius:50%; border:1px solid var(--border); background:rgba(255,255,255,.06); color:var(--text); display:flex; align-items:center; justify-content:center; font-size:14px; transition:all .2s ease;}
 .pb-btn:hover{border-color:var(--now); color:var(--accent-2);}
 .pb-btn.play{width:46px; height:46px; background:linear-gradient(120deg, color-mix(in srgb, var(--now) 60%, white), var(--now)); color:#0c0a24; border:none; font-size:16px; box-shadow:0 0 22px color-mix(in srgb, var(--now) 55%, transparent);}
+.pb-btn.play.loading{animation:playLoadPulse 1s ease-in-out infinite;}
+@keyframes playLoadPulse{0%,100%{opacity:1;}50%{opacity:.45;}}
 .pb-vis-wrap{flex:1; display:flex; align-items:center; gap:12px; min-width:0; height:100%; padding:14px 0;}
 .pb-time{font-size:11px; color:var(--text-faint); font-variant-numeric:tabular-nums; flex:none; width:36px;}
 .pb-time.end{text-align:right;}
@@ -724,13 +726,18 @@ function initLeafletMap(){
       return L.divIcon({ html:'<div class="marker-cluster-custom" style="width:'+n+'px;height:'+n+'px;">'+cluster.getChildCount()+'</div>', className:'', iconSize:[40,40] });
     }
   });
+  leafletMap.addLayer(markerLayer);
+}
+function populateMarkers(){
+  if(!markerLayer) return;
+  markerLayer.clearLayers();
+  markersById = {};
   SOUND_DATA.forEach(function(item){
     const m = L.marker([item.lat, item.lng], {icon:makeMarkerIcon(item)});
     m.on('click', function(){ openDetail(item.id); });
     markerLayer.addLayer(m);
     markersById[item.id] = m;
   });
-  leafletMap.addLayer(markerLayer);
 }
 
 /* =========================================================================================
@@ -797,18 +804,26 @@ function ensureAnalyser(){
   }
 }
 async function playItem(item){
-  getCtx().resume();
-  ensureAnalyser();
   currentItem = item;
   setNowColor(item.category);
-  const results = await Promise.all([resolveAudioUrl(item), getEnergyProfile(item,64)]);
-  const url = results[0]; currentProfile = results[1];
-  audioEl.src = url;
-  await audioEl.play().catch(function(){});
   updatePlayerBarInfo(item);
   document.getElementById('player-bar').classList.add('open');
-  setPlayIcon(true);
-  item.plays = (item.plays||0)+1;
+  setPlayIcon(false);
+  document.getElementById('pb-play').classList.add('loading');
+
+  getCtx().resume();
+  ensureAnalyser();
+  try{
+    const results = await Promise.all([resolveAudioUrl(item), getEnergyProfile(item,64)]);
+    if(currentItem !== item) return; // a different track was requested meanwhile
+    const url = results[0]; currentProfile = results[1];
+    audioEl.src = url;
+    await audioEl.play().catch(function(){});
+    setPlayIcon(true);
+    item.plays = (item.plays||0)+1;
+  } finally {
+    document.getElementById('pb-play').classList.remove('loading');
+  }
 }
 function updatePlayerBarInfo(item){
   document.getElementById('pb-title-text').textContent = item.title;
@@ -1189,9 +1204,10 @@ initStars();
 /* =========================================================================================
    Init
 ========================================================================================= */
+initLeafletMap();
 (async function boot(){
   SOUND_DATA = await resolveSoundData();
-  initLeafletMap();
+  populateMarkers();
   buildCarousel(filteredList());
 })();
 </script>
